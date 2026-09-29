@@ -49,7 +49,10 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
         digest = image_digest(field(row, "image"))
         indexed_rows.append((digest, text))
         # TatDQA repeats a page for multiple questions. Keep the fullest OCR copy.
-        if len(text) > len(by_digest.get(digest, "")):
+        # Preserve an explicit empty OCR row as a successful page mapping.  A
+        # missing mapping and a mapped page with no recognized text have very
+        # different meanings and are reported separately below.
+        if digest not in by_digest or len(text) > len(by_digest[digest]):
             by_digest[digest] = text
         filename = row.get("image_filename")
         if filename:
@@ -113,6 +116,7 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
             flush=True,
         )
     matched = len(documents) - len(missing)
+    nonempty = sum(bool(text.strip()) for text in documents.values())
     return documents, {
         "dataset": ocr_name,
         "fingerprint": getattr(rows, "_fingerprint", None),
@@ -121,7 +125,10 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
         "matched_pages": matched,
         "missing_pages": len(missing),
         "missing_corpus_ids": missing,
-        "coverage": matched / len(bundle.corpus_ids),
+        "mapping_coverage": matched / len(bundle.corpus_ids),
+        "nonempty_ocr_pages": nonempty,
+        "empty_ocr_pages": len(bundle.corpus_ids) - nonempty,
+        "nonempty_ocr_coverage": nonempty / len(bundle.corpus_ids),
         "filename_matches": filename_matches,
         "image_digest_matches": digest_matches,
         "position_matches": position_matches,
@@ -133,7 +140,7 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
             else 0.0
         ),
         "positional_fallback_enabled": positional_fallback_safe,
-        "join_version": 2,
+        "join_version": 3,
         "join": "exact filename, image digest, then verified source-row position",
         "missing_page_policy": "retain corpus page with empty OCR text",
     }
@@ -181,7 +188,7 @@ def main() -> None:
                 and existing.get("benchmark_comparable")
                 and existing.get("dataset") == args.dataset
                 and dense.get("model") == args.dense_model
-                and existing.get("ocr", {}).get("join_version") == 2
+                and existing.get("ocr", {}).get("join_version") == 3
             ):
                 print(f"Keeping completed result {output}")
                 return

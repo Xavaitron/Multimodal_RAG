@@ -1,7 +1,7 @@
 {
   "dataset": "mteb/VidoreInfoVQARetrieval",
   "experiment": "vidore_token_compression_manifest",
-  "git_commit": "d335e7033772ad54ebad92739f110f987380ca9c",
+  "git_commit": "fa97ac156d62ce999fd18c0efca082daa96535b8",
   "model": "vidore/colSmol-500M",
   "results": [
     "artifacts/results/compression/infovqa_colsmol500m_none_r1000.json",

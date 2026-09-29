@@ -6,7 +6,7 @@
   "cuda_available": true,
   "embedding_dimension": 128,
   "fp16_supported": true,
-  "git_commit": "d335e7033772ad54ebad92739f110f987380ca9c",
+  "git_commit": "fa97ac156d62ce999fd18c0efca082daa96535b8",
   "gpu_name": "NVIDIA RTX A6000",
   "manual_maxsim": 14.1171875,
   "model": "vidore/colSmol-500M",

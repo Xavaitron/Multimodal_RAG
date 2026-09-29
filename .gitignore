@@ -8,3 +8,9 @@ cache/
 checkpoints/
 artifacts/logs/
 *.safetensors
+.tools/
+tmp/report-pages*/
+output/pdf/*.aux
+output/pdf/*.log
+output/pdf/*.out
+output/pdf/*.toc

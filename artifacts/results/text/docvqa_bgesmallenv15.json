@@ -8,12 +8,12 @@
   },
   "documents": 500,
   "experiment": "vidore_text_baselines",
-  "git_commit": "d335e7033772ad54ebad92739f110f987380ca9c",
+  "git_commit": "fa97ac156d62ce999fd18c0efca082daa96535b8",
   "methods": {
     "bm25": {
       "efficiency": {
-        "index_build_seconds": 0.05092599429190159,
-        "retrieval_ms_per_query": 2.0816373636743712
+        "index_build_seconds": 0.05038413964211941,
+        "retrieval_ms_per_query": 2.204294014978171
       },
       "metrics": {
         "mrr": 0.351563825113158,
@@ -29,11 +29,11 @@
     },
     "dense_text": {
       "efficiency": {
-        "document_encoding_ms_per_page": 2.7201933786273003,
+        "document_encoding_ms_per_page": 2.8722342755645514,
         "index_size_mb": 0.732421875,
         "peak_vram_mb": 730.26611328125,
-        "query_encoding_ms_per_query": 0.33028921455210963,
-        "retrieval_ms_per_query": 0.0664767233072522
+        "query_encoding_ms_per_query": 0.3750379653668192,
+        "retrieval_ms_per_query": 0.11894423845007256
       },
       "metrics": {
         "mrr": 0.2783657771985955,
@@ -49,23 +49,27 @@
     }
   },
   "ocr": {
-    "coverage": 0.992,
     "dataset": "vidore/docvqa_test_subsampled_tesseract",
+    "empty_ocr_pages": 4,
     "filename_matches": 0,
     "fingerprint": "4c005b2511645d39",
-    "image_digest_matches": 496,
-    "join": "exact filename, then sha256(width,height,RGB bytes)",
-    "matched_pages": 496,
-    "missing_corpus_ids": [
-      "corpus-test-180",
-      "corpus-test-225",
-      "corpus-test-365",
-      "corpus-test-460"
-    ],
+    "image_digest_matches": 500,
+    "join": "exact filename, image digest, then verified source-row position",
+    "join_version": 3,
+    "mapping_coverage": 1.0,
+    "matched_pages": 500,
+    "missing_corpus_ids": [],
     "missing_page_policy": "retain corpus page with empty OCR text",
-    "missing_pages": 4,
+    "missing_pages": 0,
+    "nonempty_ocr_coverage": 0.992,
+    "nonempty_ocr_pages": 496,
+    "position_matches": 0,
+    "positional_alignment_ratio": 1.0,
+    "positional_comparisons": 500,
+    "positional_fallback_enabled": true,
+    "positional_image_matches": 500,
     "rows": 500,
-    "unique_pages": 496
+    "unique_pages": 500
   },
   "per_query": [
     {
