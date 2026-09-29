@@ -18,10 +18,12 @@ from lightweight_multimodal_retrieval.metrics import evaluate_run
 from lightweight_multimodal_retrieval.utils import git_commit, seed_everything, write_json
 from lightweight_multimodal_retrieval.vidore_data import (
     OCR_DATASETS,
+    corpus_position,
     field,
     image_digest,
     load_vidore_bundle,
     model_slug,
+    positional_alignment_is_safe,
 )
 
 
@@ -41,9 +43,11 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
     rows = load_dataset(ocr_name, split="test")
     by_digest: dict[str, str] = {}
     by_filename: dict[str, str] = {}
+    indexed_rows: list[tuple[str, str]] = []
     for index, row in enumerate(rows, 1):
         text = str(field(row, "text_description", "text", "ocr_text"))
         digest = image_digest(field(row, "image"))
+        indexed_rows.append((digest, text))
         # TatDQA repeats a page for multiple questions. Keep the fullest OCR copy.
         if len(text) > len(by_digest.get(digest, "")):
             by_digest[digest] = text
@@ -56,11 +60,35 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
         if index % 500 == 0:
             print(f"Indexed OCR rows: {index}/{len(rows)}", flush=True)
 
+    corpus_images = bundle.images()
+    positional_comparisons = 0
+    positional_image_matches = 0
+    for corpus_id, image in zip(bundle.corpus_ids, corpus_images, strict=True):
+        position = corpus_position(corpus_id)
+        if position is None or position >= len(indexed_rows):
+            continue
+        positional_comparisons += 1
+        if image_digest(image) == indexed_rows[position][0]:
+            positional_image_matches += 1
+    positional_fallback_safe = (
+        len(rows) == bundle.full_document_count
+        and positional_alignment_is_safe(
+            positional_image_matches,
+            positional_comparisons,
+        )
+    )
+    print(
+        f"OCR positional alignment: {positional_image_matches}/"
+        f"{positional_comparisons}; fallback enabled={positional_fallback_safe}",
+        flush=True,
+    )
+
     documents: dict[str, str] = {}
     missing: list[str] = []
     filename_matches = 0
     digest_matches = 0
-    for corpus_id, image in zip(bundle.corpus_ids, bundle.images(), strict=True):
+    position_matches = 0
+    for corpus_id, image in zip(bundle.corpus_ids, corpus_images, strict=True):
         name = Path(corpus_id).name.casefold()
         text = by_filename.get(name) or by_filename.get(Path(name).stem)
         if text is not None:
@@ -69,6 +97,11 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
             text = by_digest.get(image_digest(image))
             if text is not None:
                 digest_matches += 1
+        if text is None and positional_fallback_safe:
+            position = corpus_position(corpus_id)
+            if position is not None and position < len(indexed_rows):
+                text = indexed_rows[position][1]
+                position_matches += 1
         if text is None:
             missing.append(corpus_id)
             text = ""
@@ -91,7 +124,17 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
         "coverage": matched / len(bundle.corpus_ids),
         "filename_matches": filename_matches,
         "image_digest_matches": digest_matches,
-        "join": "exact filename, then sha256(width,height,RGB bytes)",
+        "position_matches": position_matches,
+        "positional_image_matches": positional_image_matches,
+        "positional_comparisons": positional_comparisons,
+        "positional_alignment_ratio": (
+            positional_image_matches / positional_comparisons
+            if positional_comparisons
+            else 0.0
+        ),
+        "positional_fallback_enabled": positional_fallback_safe,
+        "join_version": 2,
+        "join": "exact filename, image digest, then verified source-row position",
         "missing_page_policy": "retain corpus page with empty OCR text",
     }
 
@@ -138,6 +181,7 @@ def main() -> None:
                 and existing.get("benchmark_comparable")
                 and existing.get("dataset") == args.dataset
                 and dense.get("model") == args.dense_model
+                and existing.get("ocr", {}).get("join_version") == 2
             ):
                 print(f"Keeping completed result {output}")
                 return

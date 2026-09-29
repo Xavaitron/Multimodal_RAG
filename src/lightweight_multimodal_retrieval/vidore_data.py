@@ -82,6 +82,30 @@ def image_digest(image: Any) -> str:
     return digest.hexdigest()
 
 
+def corpus_position(corpus_id: str) -> int | None:
+    """Return N from generated MTEB IDs such as ``corpus-test-N``."""
+    match = re.fullmatch(r"corpus-test-(\d+)", corpus_id)
+    return int(match.group(1)) if match else None
+
+
+def positional_alignment_is_safe(
+    matching_images: int,
+    comparable_images: int,
+    *,
+    minimum_images: int = 50,
+    minimum_ratio: float = 0.8,
+) -> bool:
+    """Require strong image evidence before using source-row position as a join key."""
+    if matching_images < 0 or comparable_images < 0 or matching_images > comparable_images:
+        raise ValueError("invalid positional alignment counts")
+    if minimum_images < 1 or not 0 < minimum_ratio <= 1:
+        raise ValueError("invalid positional alignment thresholds")
+    return (
+        comparable_images >= minimum_images
+        and matching_images / comparable_images >= minimum_ratio
+    )
+
+
 def load_vidore_bundle(
     dataset_name: str,
     *,

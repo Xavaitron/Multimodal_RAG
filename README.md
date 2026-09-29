@@ -155,6 +155,11 @@ unique images than the retrieval corpus. Unmatched pages remain in the corpus
 with empty OCR, and the JSON records the coverage and exact missing IDs instead
 of silently dropping candidates or assigning another page's text.
 
+When raw image hashes differ, the evaluator permits a source-row-position
+fallback only after at least 50 page pairs establish at least 80% exact
+same-position image agreement. The measured evidence and fallback count are
+saved in every result; qrels are never used to construct the OCR index.
+
 This is a controlled page-level comparison over the same candidate corpus.
 ViDoRe's separately published chunked-OCR leaderboard baseline uses a different
 indexing unit, so its score should not be presented as directly equivalent.
