@@ -5,11 +5,24 @@ compression, caching, and GPU measurements.
 
 ## Install
 
-Run from the repository directory using the default Python installation:
+Run from the repository directory:
 
 ```bash
-pip install -r requirements.txt
-pip install -e . --no-deps
+python --version
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install -e . --no-deps
+```
+
+Python 3.10-3.14 is required. Do not use bare `pip` outside the activated
+environment, because it may point to Python 2 on older servers.
+
+Activate the environment again after reconnecting to the server:
+
+```bash
+source .venv/bin/activate
 ```
 
 ## Test
@@ -25,36 +38,53 @@ The final command downloads `vidore/colSmol-500M` and runs one image/query
 forward pass. Diagnostic results are saved to
 `artifacts/results/environment_diagnostic.json`.
 
-## Run the standard dataset
+## Run all full benchmark evaluations
 
-No local PDFs or images are needed. This downloads and evaluates a small subset
-of the standard ViDoRe DocVQA retrieval benchmark:
+No local PDFs or images are needed. Run all four commands below for the final
+results. Each command evaluates every query against the complete document
+corpus and writes to a separate JSON file.
 
-```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --max-queries 20 --max-documents 100
-```
+Change `CUDA_VISIBLE_DEVICES=0` if you want to use a different GPU.
 
-Results are saved to `artifacts/results/vidore.json`.
-Change `0` to the GPU index you want to use.
-
-Run the complete DocVQA evaluation:
+### DocVQA
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --max-queries 0 --max-documents 0
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py \
+  --dataset mteb/VidoreDocVQARetrieval \
+  --max-queries 0 \
+  --max-documents 0 \
+  --output artifacts/results/vidore_docvqa.json
 ```
 
-Other supported ViDoRe datasets:
+### InfoVQA
 
 ```bash
-# Infographics
-CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --dataset mteb/VidoreInfoVQARetrieval
-
-# Scientific papers
-CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --dataset mteb/VidoreArxivQARetrieval
-
-# Financial tables
-CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --dataset mteb/VidoreTatdqaRetrieval
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py \
+  --dataset mteb/VidoreInfoVQARetrieval \
+  --max-queries 0 \
+  --max-documents 0 \
+  --output artifacts/results/vidore_infovqa.json
 ```
 
-Small subsets are development checks. Use the complete dataset for final,
-benchmark-comparable results.
+### ArxivQA
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py \
+  --dataset mteb/VidoreArxivQARetrieval \
+  --max-queries 0 \
+  --max-documents 0 \
+  --output artifacts/results/vidore_arxivqa.json
+```
+
+### TatDQA
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py \
+  --dataset mteb/VidoreTatdqaRetrieval \
+  --max-queries 0 \
+  --max-documents 0 \
+  --output artifacts/results/vidore_tatdqa.json
+```
+
+A successful full result has `"benchmark_comparable": true` in its JSON.
+Do not use files showing `"benchmark_comparable": false` as final results.

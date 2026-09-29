@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import time
 from collections.abc import Iterable, Sequence
 from typing import Any
@@ -42,6 +43,23 @@ def load_config(dataset_name: str, config: str) -> Dataset:
     return dataset
 
 
+def default_output_path(dataset_name: str) -> str:
+    """Create a stable, dataset-specific result filename."""
+    dataset_id = dataset_name.rsplit("/", 1)[-1]
+    known_names = {
+        "VidoreDocVQARetrieval": "docvqa",
+        "VidoreInfoVQARetrieval": "infovqa",
+        "VidoreArxivQARetrieval": "arxivqa",
+        "VidoreTatdqaRetrieval": "tatdqa",
+    }
+    if dataset_id in known_names:
+        return f"artifacts/results/vidore_{known_names[dataset_id]}.json"
+    dataset_id = dataset_id.removeprefix("Vidore").removesuffix("Retrieval")
+    slug = re.sub(r"(?<!^)(?=[A-Z])", "_", dataset_id).lower()
+    slug = re.sub(r"[^a-z0-9]+", "_", slug).strip("_")
+    return f"artifacts/results/vidore_{slug}.json"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="mteb/VidoreDocVQARetrieval")
@@ -49,7 +67,11 @@ def main() -> None:
     parser.add_argument("--max-queries", type=int, default=20, help="0 means all queries")
     parser.add_argument("--max-documents", type=int, default=100, help="0 means full corpus")
     parser.add_argument("--query-batch-size", type=int, default=4)
-    parser.add_argument("--output", default="artifacts/results/vidore.json")
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Result JSON path; defaults to a dataset-specific filename",
+    )
     args = parser.parse_args()
 
     if args.max_queries < 0 or args.max_documents < 0 or args.query_batch_size < 1:
@@ -168,7 +190,9 @@ def main() -> None:
             "peak_vram_mb": torch.cuda.max_memory_allocated() / 1024**2,
         },
     }
-    write_json(args.output, result)
+    output_path = args.output or default_output_path(args.dataset)
+    write_json(output_path, result)
+    print(f"Wrote {output_path}")
     print(json.dumps(result, indent=2))
 
 
