@@ -1,0 +1,22 @@
+model: vidore/colSmol-500M
+base_model: HuggingFaceTB/SmolVLM-500M-Instruct
+dtype: float16
+seed: 42
+training:
+  loss: official_colbert_in_batch_negative
+  lora: true
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  micro_batch_size: 1
+  gradient_accumulation_steps: 32
+  target_effective_batch_size: 32
+  learning_rate: 2.0e-5
+  epochs: 2
+  gradient_checkpointing: true
+  max_grad_norm: 1.0
+  max_vram_gb: 11.5
+notes: >-
+  Starting values only. Probe micro-batch size on the target GPU and record any change.
+  Use colpali_engine.loss.late_interaction_losses.ColbertLoss for parity with the
+  current official ColModelTraining default; do not substitute a custom loss silently.

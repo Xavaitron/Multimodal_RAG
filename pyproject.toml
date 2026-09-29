@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lightweight-multimodal-retrieval"
+version = "0.1.0"
+description = "Reproducible lightweight multimodal document retrieval experiments"
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+dependencies = [
+  "accelerate>=1.1,<2",
+  "colpali-engine==0.3.18",
+  "numpy>=1.26",
+  "pillow>=10.0",
+  "pyyaml>=6.0",
+  "torch>=2.2",
+  "torchvision>=0.17",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.9"]
+train = ["bitsandbytes", "datasets>=2.19", "peft>=0.18,<0.20"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["gpu: requires a CUDA GPU", "slow: downloads or runs model weights"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

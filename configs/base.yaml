@@ -1,0 +1,18 @@
+project: lightweight-multimodal-retrieval
+seed: 42
+model:
+  name: vidore/colSmol-500M
+  dtype: float16
+  attention: eager
+retrieval:
+  query_batch_size: 4
+  document_batch_size: 1
+  score_document_batch_size: 16
+  normalize_embeddings: true
+hardware:
+  device: cuda
+  max_vram_gb: 11.5
+outputs:
+  results_dir: artifacts/results
+  cache_dir: cache
+  checkpoints_dir: checkpoints
