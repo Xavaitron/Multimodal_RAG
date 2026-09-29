@@ -1,9 +1,11 @@
 accelerate>=1.1,<2
 colpali-engine==0.3.18
 datasets>=2.19
+matplotlib>=3.9,<4
 numpy>=1.26
 Pillow>=10.0
 PyYAML>=6.0
+sentence-transformers>=6.0,<7
 torch>=2.2,<2.12
 torchvision>=0.17
 

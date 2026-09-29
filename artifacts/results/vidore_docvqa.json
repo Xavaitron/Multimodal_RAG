@@ -1,0 +1,38 @@
+{
+  "benchmark_comparable": true,
+  "dataset": "mteb/VidoreDocVQARetrieval",
+  "dataset_fingerprints": {
+    "corpus": "548857d357e77eff",
+    "qrels": "0458bda0ba41ded9",
+    "queries": "c10bc21449091dd8"
+  },
+  "documents": 500,
+  "efficiency": {
+    "page_encoding_ms_per_page": 695.7317338697612,
+    "peak_vram_mb": 2981.12890625,
+    "query_encoding_ms_per_query": 18.146206769357104,
+    "retrieval_ms_per_query": 95.20625781284402
+  },
+  "experiment": "vidore_colsmol_evaluation",
+  "git_commit": "ae30456667021535230c44dc11fb6d9c7fdf7556",
+  "metrics": {
+    "global_visual": {
+      "mrr": 0.19531625642693484,
+      "ndcg@5": 0.19141911783747023,
+      "recall@1": 0.1130820399113082,
+      "recall@10": 0.3186252771618625,
+      "recall@5": 0.2583148558758315
+    },
+    "maxsim": {
+      "mrr": 0.5761888255123787,
+      "ndcg@5": 0.5775680015969376,
+      "recall@1": 0.499630450849963,
+      "recall@10": 0.7151884700665188,
+      "recall@5": 0.642719881744272
+    }
+  },
+  "model": "vidore/colSmol-500M",
+  "model_revision": "650243e9bf299a5a082841ed2907da8b0b9ce553",
+  "queries": 451,
+  "seed": 42
+}

@@ -35,13 +35,30 @@ def score_documents(
     document_batch_size: int = 16,
 ) -> Tensor:
     """Score a query against variable-length documents in bounded-size chunks."""
+    _validate_tokens("query", query)
     if document_batch_size < 1:
         raise ValueError("document_batch_size must be positive")
     scores: list[Tensor] = []
     for start in range(0, len(documents), document_batch_size):
         chunk = documents[start : start + document_batch_size]
-        scores.extend(maxsim(query, doc, normalize=normalize) for doc in chunk)
-    return torch.stack(scores) if scores else torch.empty(0, device=query.device)
+        if not chunk:
+            continue
+        for document in chunk:
+            _validate_tokens("document", document)
+            if document.shape[-1] != query.shape[-1]:
+                raise ValueError("query and document embedding dimensions must match")
+        query_value = F.normalize(query, p=2, dim=-1) if normalize else query
+        lengths = torch.tensor([item.shape[0] for item in chunk], device=query.device)
+        width = int(lengths.max())
+        padded = query.new_zeros((len(chunk), width, query.shape[-1]))
+        for index, document in enumerate(chunk):
+            value = F.normalize(document, p=2, dim=-1) if normalize else document
+            padded[index, : value.shape[0]] = value
+        similarities = torch.einsum("qd,bkd->bqk", query_value, padded)
+        positions = torch.arange(width, device=query.device).unsqueeze(0)
+        similarities.masked_fill_(positions[:, None, :] >= lengths[:, None, None], -torch.inf)
+        scores.append(similarities.max(dim=2).values.sum(dim=1))
+    return torch.cat(scores) if scores else torch.empty(0, device=query.device)
 
 
 def global_embedding(tokens: Tensor) -> Tensor:

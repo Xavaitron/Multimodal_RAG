@@ -5,6 +5,5 @@ __pycache__/
 .ruff_cache/
 cache/
 checkpoints/
-artifacts/results/*.json
 artifacts/logs/
 *.safetensors

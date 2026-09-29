@@ -22,10 +22,15 @@ def save_embeddings(
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     cpu_embeddings = {key: value.detach().cpu() for key, value in embeddings.items()}
-    torch.save({"embeddings": cpu_embeddings, "metadata": metadata}, destination)
-    destination.with_suffix(destination.suffix + ".json").write_text(
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    torch.save({"embeddings": cpu_embeddings, "metadata": metadata}, temporary)
+    temporary.replace(destination)
+    metadata_path = destination.with_suffix(destination.suffix + ".json")
+    metadata_temporary = metadata_path.with_suffix(metadata_path.suffix + ".tmp")
+    metadata_temporary.write_text(
         json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+    metadata_temporary.replace(metadata_path)
 
 
 def load_embeddings(path: str | Path) -> tuple[dict[str, Tensor], dict[str, Any]]:
@@ -33,3 +38,22 @@ def load_embeddings(path: str | Path) -> tuple[dict[str, Tensor], dict[str, Any]
     if set(payload) != {"embeddings", "metadata"}:
         raise ValueError("unrecognized cache format")
     return payload["embeddings"], payload["metadata"]
+
+
+def tensor_bytes(tensor: Tensor) -> int:
+    return tensor.numel() * tensor.element_size()
+
+
+def embedding_bytes(embeddings: dict[str, Tensor] | list[Tensor]) -> int:
+    values = embeddings.values() if isinstance(embeddings, dict) else embeddings
+    return sum(tensor_bytes(tensor) for tensor in values)
+
+
+def validate_cache_metadata(actual: dict[str, Any], expected: dict[str, Any]) -> None:
+    mismatches = {
+        key: {"expected": value, "actual": actual.get(key)}
+        for key, value in expected.items()
+        if actual.get(key) != value
+    }
+    if mismatches:
+        raise ValueError(f"embedding cache metadata mismatch: {mismatches}")
