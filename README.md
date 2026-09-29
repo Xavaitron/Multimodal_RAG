@@ -15,8 +15,8 @@ required.
 
 ```bash
 python --version
-python -m venv .venv
-source .venv/bin/activate
+python -m venv rag
+source rag/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -e . --no-deps
@@ -25,7 +25,7 @@ python -m pip install -e . --no-deps
 After reconnecting to the server, reactivate the environment with:
 
 ```bash
-source .venv/bin/activate
+source rag/bin/activate
 ```
 
 Always use `python -m pip` inside the activated environment. On older servers,
@@ -33,7 +33,7 @@ the bare `pip` command may still point to Python 2.
 
 ## Complete unattended run
 
-From the repository directory, this single command creates/reuses `.venv`,
+From the repository directory, this single command creates/reuses `rag`,
 installs dependencies, tests the code, runs all datasets, models, text
 baselines and compression experiments on physical GPU 2, then builds the final
 tables and figures. It also writes a timestamped log under `artifacts/logs/`.
@@ -48,7 +48,7 @@ embedding caches are reused, so an interrupted run can be started again.
 ## Environment check and tests
 
 ```bash
-source .venv/bin/activate
+source rag/bin/activate
 CUDA_VISIBLE_DEVICES=2 nvidia-smi
 CUDA_VISIBLE_DEVICES=2 python scripts/environment_diagnostic.py --skip-model
 pytest -q

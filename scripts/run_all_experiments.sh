@@ -5,6 +5,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 GPU_ID="${GPU_ID:-2}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
+VENV_DIR="${VENV_DIR:-rag}"
 RUN_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 LOG_DIR="artifacts/logs"
 mkdir -p "$LOG_DIR"
@@ -18,10 +19,10 @@ export PYTHONUNBUFFERED=1
 echo "Started full experiment run at $(date -u --iso-8601=seconds)"
 echo "Physical GPU selected by CUDA_VISIBLE_DEVICES: $GPU_ID"
 
-if [[ ! -d .venv ]]; then
-  "$PYTHON_BIN" -m venv .venv
+if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
+  "$PYTHON_BIN" -m venv "$VENV_DIR"
 fi
-source .venv/bin/activate
+source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -e . --no-deps
