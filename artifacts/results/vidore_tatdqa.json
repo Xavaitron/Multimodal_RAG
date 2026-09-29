@@ -1,0 +1,38 @@
+{
+  "benchmark_comparable": false,
+  "dataset": "mteb/VidoreTatdqaRetrieval",
+  "dataset_fingerprints": {
+    "corpus": "a8c14320f481e8c8",
+    "qrels": "ab928ee1e087231d",
+    "queries": "522d0b37f1815977"
+  },
+  "documents": 100,
+  "efficiency": {
+    "page_encoding_ms_per_page": 702.0306690502912,
+    "peak_vram_mb": 2881.37744140625,
+    "query_encoding_ms_per_query": 19.16020968928933,
+    "retrieval_ms_per_query": 22.114413185045123
+  },
+  "experiment": "vidore_colsmol_evaluation",
+  "git_commit": "b7f81ea6f2f98ef345618bad4c01818191c9541f",
+  "metrics": {
+    "global_visual": {
+      "mrr": 0.38856972594529793,
+      "ndcg@5": 0.43898210339744576,
+      "recall@1": 0.2,
+      "recall@10": 0.65,
+      "recall@5": 0.65
+    },
+    "maxsim": {
+      "mrr": 0.868840579710145,
+      "ndcg@5": 0.8757248060471398,
+      "recall@1": 0.8,
+      "recall@10": 0.915,
+      "recall@5": 0.9099999999999999
+    }
+  },
+  "model": "vidore/colSmol-500M",
+  "model_revision": "650243e9bf299a5a082841ed2907da8b0b9ce553",
+  "queries": 20,
+  "seed": 42
+}
