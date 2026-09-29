@@ -1,38 +1,38 @@
 {
-  "benchmark_comparable": false,
+  "benchmark_comparable": true,
   "dataset": "mteb/VidoreArxivQARetrieval",
   "dataset_fingerprints": {
     "corpus": "ceedf18a9dd115b1",
     "qrels": "e068e93629ac7593",
     "queries": "57cf835181b9ea9e"
   },
-  "documents": 100,
+  "documents": 500,
   "efficiency": {
-    "page_encoding_ms_per_page": 583.4241018909961,
-    "peak_vram_mb": 2873.470703125,
-    "query_encoding_ms_per_query": 16.69126572087407,
-    "retrieval_ms_per_query": 21.338324109092355
+    "page_encoding_ms_per_page": 581.8708375114948,
+    "peak_vram_mb": 2958.97802734375,
+    "query_encoding_ms_per_query": 18.036303482949734,
+    "retrieval_ms_per_query": 95.3155615683645
   },
   "experiment": "vidore_colsmol_evaluation",
-  "git_commit": "b7f81ea6f2f98ef345618bad4c01818191c9541f",
+  "git_commit": "ae30456667021535230c44dc11fb6d9c7fdf7556",
   "metrics": {
     "global_visual": {
-      "mrr": 0.37238121483750636,
-      "ndcg@5": 0.3565464876785729,
-      "recall@1": 0.3,
-      "recall@10": 0.5,
-      "recall@5": 0.4
+      "mrr": 0.2537572549321698,
+      "ndcg@5": 0.25272761182874204,
+      "recall@1": 0.164,
+      "recall@10": 0.416,
+      "recall@5": 0.334
     },
     "maxsim": {
-      "mrr": 0.7774000509294627,
-      "ndcg@5": 0.7880929753571457,
-      "recall@1": 0.7,
-      "recall@10": 0.9,
-      "recall@5": 0.85
+      "mrr": 0.7359473122727911,
+      "ndcg@5": 0.7465523181756636,
+      "recall@1": 0.67,
+      "recall@10": 0.858,
+      "recall@5": 0.812
     }
   },
   "model": "vidore/colSmol-500M",
   "model_revision": "650243e9bf299a5a082841ed2907da8b0b9ce553",
-  "queries": 20,
+  "queries": 500,
   "seed": 42
 }

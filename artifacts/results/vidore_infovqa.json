@@ -1,38 +1,38 @@
 {
-  "benchmark_comparable": false,
+  "benchmark_comparable": true,
   "dataset": "mteb/VidoreInfoVQARetrieval",
   "dataset_fingerprints": {
     "corpus": "4439fd11d0c80450",
     "qrels": "aca95ed83f964c47",
     "queries": "aa90eee2e46da534"
   },
-  "documents": 100,
+  "documents": 500,
   "efficiency": {
-    "page_encoding_ms_per_page": 536.3574156071991,
-    "peak_vram_mb": 2869.47216796875,
-    "query_encoding_ms_per_query": 18.61826409585774,
-    "retrieval_ms_per_query": 20.382295921444893
+    "page_encoding_ms_per_page": 524.8199383188039,
+    "peak_vram_mb": 2937.40869140625,
+    "query_encoding_ms_per_query": 17.849238114318386,
+    "retrieval_ms_per_query": 92.4781771010987
   },
   "experiment": "vidore_colsmol_evaluation",
-  "git_commit": "b7f81ea6f2f98ef345618bad4c01818191c9541f",
+  "git_commit": "ae30456667021535230c44dc11fb6d9c7fdf7556",
   "metrics": {
     "global_visual": {
-      "mrr": 0.6431493506493506,
-      "ndcg@5": 0.7172688678319089,
-      "recall@1": 0.5,
-      "recall@10": 0.95,
-      "recall@5": 0.95
+      "mrr": 0.5383047674913948,
+      "ndcg@5": 0.5545133484356061,
+      "recall@1": 0.4271255060728745,
+      "recall@10": 0.7611336032388664,
+      "recall@5": 0.667004048582996
     },
     "maxsim": {
-      "mrr": 0.9416666666666667,
-      "ndcg@5": 0.9565464876785729,
-      "recall@1": 0.9,
-      "recall@10": 1.0,
-      "recall@5": 1.0
+      "mrr": 0.8622086057402678,
+      "ndcg@5": 0.8686021351931527,
+      "recall@1": 0.8238866396761133,
+      "recall@10": 0.9271255060728745,
+      "recall@5": 0.9048582995951417
     }
   },
   "model": "vidore/colSmol-500M",
   "model_revision": "650243e9bf299a5a082841ed2907da8b0b9ce553",
-  "queries": 20,
+  "queries": 494,
   "seed": 42
 }
