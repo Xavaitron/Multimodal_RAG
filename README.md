@@ -31,28 +31,29 @@ No local PDFs or images are needed. This downloads and evaluates a small subset
 of the standard ViDoRe DocVQA retrieval benchmark:
 
 ```bash
-python scripts/evaluate_vidore.py --max-queries 20 --max-documents 100
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --max-queries 20 --max-documents 100
 ```
 
 Results are saved to `artifacts/results/vidore.json`.
+Change `0` to the GPU index you want to use.
 
 Run the complete DocVQA evaluation:
 
 ```bash
-python scripts/evaluate_vidore.py --max-queries 0 --max-documents 0
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --max-queries 0 --max-documents 0
 ```
 
 Other supported ViDoRe datasets:
 
 ```bash
 # Infographics
-python scripts/evaluate_vidore.py --dataset mteb/VidoreInfoVQARetrieval
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --dataset mteb/VidoreInfoVQARetrieval
 
 # Scientific papers
-python scripts/evaluate_vidore.py --dataset mteb/VidoreArxivQARetrieval
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --dataset mteb/VidoreArxivQARetrieval
 
 # Financial tables
-python scripts/evaluate_vidore.py --dataset mteb/VidoreTatdqaRetrieval
+CUDA_VISIBLE_DEVICES=0 python scripts/evaluate_vidore.py --dataset mteb/VidoreTatdqaRetrieval
 ```
 
 Small subsets are development checks. Use the complete dataset for final,
