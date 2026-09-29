@@ -1,0 +1,43 @@
+{
+  "benchmark_comparable": true,
+  "compression": {
+    "centroids_l2_normalized": false,
+    "kmeans_iterations": null,
+    "method": "uniform",
+    "retention_ratio": 0.125,
+    "sequence_aware": true,
+    "spatial_layout_aware": false
+  },
+  "dataset": "mteb/VidoreTatdqaRetrieval",
+  "dataset_fingerprints": {
+    "corpus": "a8c14320f481e8c8",
+    "qrels": "ab928ee1e087231d",
+    "queries": "522d0b37f1815977"
+  },
+  "documents": 277,
+  "efficiency": {
+    "compression_ms_per_page": 0.0842019162453469,
+    "index_size_mb": 9.02294921875,
+    "peak_vram_mb": 105.52490234375,
+    "retrieval_ms_per_query": 11.833940650181413,
+    "tokens_per_page": {
+      "max": 142,
+      "mean": 133.42238267148014,
+      "min": 109
+    }
+  },
+  "experiment": "vidore_token_compression",
+  "git_commit": "d335e7033772ad54ebad92739f110f987380ca9c",
+  "metrics": {
+    "mrr": 0.5869377271189318,
+    "ndcg@5": 0.6060162244305798,
+    "recall@1": 0.47083839611178613,
+    "recall@10": 0.8262454434993924,
+    "recall@5": 0.724179829890644
+  },
+  "model": "vidore/colSmol-500M",
+  "model_revision": "650243e9bf299a5a082841ed2907da8b0b9ce553",
+  "queries": 1646,
+  "schema_version": 2,
+  "seed": 42
+}
