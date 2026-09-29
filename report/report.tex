@@ -371,7 +371,7 @@ Each query is compared against the complete corpus for its dataset. Therefore, a
 
 \subsection{Implementation and reproducible execution}
 
-Experiments ran with seed 42 in Python 3.12.12, PyTorch 2.11.0+cu130, Transformers 5.17.0, and ColPali Engine 0.3.18 on one NVIDIA RTX A6000 (physical GPU 2, 47.4~GiB). FP16 is used for visual embeddings. Dataset fingerprints, checkpoint revisions, timings, per-query ranks, and environment information are stored with the results. Twenty automated unit tests passed in the final server run.
+Experiments ran with seed 42 in Python 3.12.12, PyTorch 2.11.0+cu130, Transformers 5.17.0, and ColPali Engine 0.3.18 on one NVIDIA RTX A6000 with 47.4~GiB of VRAM. FP16 is used for visual embeddings. Dataset fingerprints, checkpoint revisions, timings, per-query ranks, and environment information are stored with the results. Twenty automated unit tests passed in the final server run.
 
 \begin{samepage}
 The implementation follows the mathematical structure directly:
@@ -573,7 +573,7 @@ The report can be audited from repository artifacts rather than reconstructed fr
 The repository README documents every experiment individually. The complete tested pipeline is:
 \begin{lstlisting}[language=bash]
 source rag/bin/activate
-GPU_ID=2 bash scripts/run_all_experiments.sh
+bash scripts/run_all_experiments.sh
 \end{lstlisting}
 
 \end{document}

@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-GPU_ID="${GPU_ID:-2}"
+GPU_ID="${GPU_ID:-0}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 VENV_DIR="${VENV_DIR:-rag}"
 RUN_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
