@@ -1,90 +1,63 @@
-# Efficient Multimodal Document Retrieval with Lightweight VLMs
+# Lightweight Multimodal Document Retrieval
 
-Research code for studying ColSmolVLM document retrieval on a 12 GB NVIDIA GPU. The repository keeps the scientific core independent of any convenience scorer: MaxSim, global pooling, retrieval metrics, token compression, caching, and efficiency measurements live in this project.
+Research implementation of ColSmol-500M document retrieval using manual MaxSim,
+retrieval baselines, token compression, caching, metrics, and GPU measurements.
 
-## What works now
+## Run on the SSH GPU server
 
-- RTX/CUDA/environment diagnostics, including an optional real ColSmol-500M image/query forward pass
-- manual ColBERT-style MaxSim and batched scoring
-- global visual pooling baseline
-- Recall@K, MRR, and nDCG@K
-- random, uniform, local-mean, and k-means token compression
-- embedding cache with metadata
-- deterministic seeding and JSON experiment output
-- unit tests for the scientific core
-
-The initial model is `vidore/colSmol-500M`. The code uses FP16 on CUDA and never claims a batch size before measuring it.
-
-## Run on an SSH GPU server
-
-These commands assume Ubuntu/Linux, an NVIDIA driver visible through `nvidia-smi`, and Python 3.10-3.13. The current ColPali package does not support Python 3.15+.
+After logging into the server, run these commands in order. This uses the
+server's default Python and does not create a virtual environment.
 
 ```bash
-ssh USER@GPU_HOST
-git clone YOUR_REPOSITORY_URL
+git clone https://github.com/Xavaitron/Multimodal_RAG.git
 cd Multimodal_RAG
-
-python3.11 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-
-# Install the CUDA build recommended for the server by pytorch.org first.
-# Example for CUDA 12.8; change cu128 if the server needs another wheel index.
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-
-pip install -e ".[dev]"
+python3 -m pip install --user -r requirements.txt
+python3 -m pip install --user -e . --no-deps
 nvidia-smi
-python scripts/environment_diagnostic.py --skip-model
-pytest -q
+python3 scripts/environment_diagnostic.py --skip-model
+python3 -m pytest -q
+python3 scripts/environment_diagnostic.py
+python3 scripts/evaluate_vidore.py --max-queries 20 --max-documents 100
 ```
 
-Run the real model smoke test (first run downloads model weights from Hugging Face):
+## Run with a standard dataset
+
+The final command above needs no local PDFs or images. It downloads ColSmol-500M
+and a 20-query/100-page subset of the standard ViDoRe DocVQA retrieval benchmark.
+Results are saved to `artifacts/results/vidore.json`.
+
+Other useful datasets:
 
 ```bash
-hf auth login                         # only if the server requires authentication
-python scripts/environment_diagnostic.py --model vidore/colSmol-500M
+# Infographics and visually structured pages
+python3 scripts/evaluate_vidore.py --dataset mteb/VidoreInfoVQARetrieval
+
+# Scientific papers
+python3 scripts/evaluate_vidore.py --dataset mteb/VidoreArxivQARetrieval
+
+# Financial tables
+python3 scripts/evaluate_vidore.py --dataset mteb/VidoreTatdqaRetrieval
 ```
 
-For a real local-page ranking check, put 5-20 rendered page images in a directory and
-create `queries.json` as a JSON list of strings, then run:
+Use `--max-queries 0 --max-documents 0` for the complete dataset. Small subsets
+are development checks, not benchmark-comparable final results.
+
+For long SSH jobs, run inside `tmux`:
 
 ```bash
-python scripts/sanity_check.py --pages data/sanity_pages --queries queries.json
-```
-
-Run it safely across a disconnect:
-
-```bash
-mkdir -p artifacts/logs
 tmux new -s colsmol
-python scripts/environment_diagnostic.py --model vidore/colSmol-500M \
-  2>&1 | tee artifacts/logs/diagnostic.log
-# Detach with Ctrl-b d; reconnect with: tmux attach -t colsmol
+python3 scripts/evaluate_vidore.py 2>&1 | tee vidore.log
+# Detach: Ctrl-b d       Reconnect: tmux attach -t colsmol
 ```
 
-If multiple GPUs are present, select one before launching:
+## Project commands
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/environment_diagnostic.py
+python3 scripts/evaluate_bm25.py --help
+python3 scripts/sanity_check.py --help
+python3 -m ruff check .
+python3 -m pytest -q
 ```
 
-Successful output records model parameters, CUDA properties, peak VRAM, embedding counts, embedding dimensions, and a manual MaxSim score in `artifacts/results/environment_diagnostic.json`.
-
-## Development
-
-```bash
-pytest -q
-ruff check .
-```
-
-Experiment outputs belong in `artifacts/`; downloaded weights, caches, and checkpoints are ignored by Git. See `docs/experiment_plan.md` for the milestone order and experimental contract.
-
-## Scientific scope
-
-The central score is
-
-```text
-S(Q, D) = sum_i max_j q_i^T d_j
-```
-
-The planned comparison is BM25 vs dense text vs global visual pooling vs multi-vector MaxSim, followed by 256M/500M capacity, fine-tuning, and token-compression ablations. RAG generation is deliberately last.
+The experiment sequence and reproducibility rules are documented in
+[`docs/experiment_plan.md`](docs/experiment_plan.md).

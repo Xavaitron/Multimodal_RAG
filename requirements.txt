@@ -1,0 +1,12 @@
+accelerate>=1.1,<2
+colpali-engine==0.3.18
+datasets>=2.19
+numpy>=1.26
+Pillow>=10.0
+PyYAML>=6.0
+torch>=2.2,<2.12
+torchvision>=0.17
+
+# Development and tests
+pytest>=8.0
+ruff>=0.9

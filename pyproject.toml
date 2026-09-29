@@ -11,6 +11,7 @@ requires-python = ">=3.10,<3.15"
 dependencies = [
   "accelerate>=1.1,<2",
   "colpali-engine==0.3.18",
+  "datasets>=2.19",
   "numpy>=1.26",
   "pillow>=10.0",
   "pyyaml>=6.0",
@@ -20,7 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.9"]
-train = ["bitsandbytes", "datasets>=2.19", "peft>=0.18,<0.20"]
+train = ["bitsandbytes", "peft>=0.18,<0.20"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
