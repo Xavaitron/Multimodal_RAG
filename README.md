@@ -150,8 +150,10 @@ CUDA_VISIBLE_DEVICES=2 python scripts/evaluate_vidore.py \
 ## OCR text baselines: BM25 and BGE-small
 
 These use the ViDoRe Tesseract page OCR and join it to the exact MTEB corpus
-page by image hash. A run stops instead of reporting misleading numbers if OCR
-coverage is below 100%.
+page by filename or image hash. Published OCR artifacts can contain fewer
+unique images than the retrieval corpus. Unmatched pages remain in the corpus
+with empty OCR, and the JSON records the coverage and exact missing IDs instead
+of silently dropping candidates or assigning another page's text.
 
 This is a controlled page-level comparison over the same candidate corpus.
 ViDoRe's separately published chunked-OCR leaderboard baseline uses a different

@@ -71,23 +71,28 @@ def load_ocr_documents(bundle: Any) -> tuple[dict[str, str], dict[str, Any]]:
                 digest_matches += 1
         if text is None:
             missing.append(corpus_id)
-        else:
-            documents[corpus_id] = text
+            text = ""
+        documents[corpus_id] = text
     if missing:
-        raise RuntimeError(
-            f"OCR join covered {len(documents)}/{len(bundle.corpus_ids)} pages; "
-            f"missing corpus IDs: {missing[:10]}"
+        print(
+            f"WARNING: OCR artifact matched {len(documents) - len(missing)}/"
+            f"{len(bundle.corpus_ids)} pages. Using empty OCR for: {missing}",
+            flush=True,
         )
+    matched = len(documents) - len(missing)
     return documents, {
         "dataset": ocr_name,
         "fingerprint": getattr(rows, "_fingerprint", None),
         "rows": len(rows),
         "unique_pages": len(by_digest),
-        "matched_pages": len(documents),
-        "coverage": len(documents) / len(bundle.corpus_ids),
+        "matched_pages": matched,
+        "missing_pages": len(missing),
+        "missing_corpus_ids": missing,
+        "coverage": matched / len(bundle.corpus_ids),
         "filename_matches": filename_matches,
         "image_digest_matches": digest_matches,
         "join": "exact filename, then sha256(width,height,RGB bytes)",
+        "missing_page_policy": "retain corpus page with empty OCR text",
     }
 
 
