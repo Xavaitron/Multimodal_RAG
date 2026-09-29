@@ -21,7 +21,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \lhead{Lightweight Multimodal Document Retrieval}
-\rhead{Pattern Recognition Course Project}
+\rhead{EE798R Course Project}
 \cfoot{\thepage}
 \setlength{\headheight}{14pt}
 \setlength{\parindent}{0pt}
@@ -40,7 +40,9 @@
 \begin{titlepage}
 \centering
 \vspace*{1.6cm}
-{\Large Pattern Recognition Course Project\par}
+{\Large EE798R: Intelligent Pattern Recognition\par}
+\vspace{0.25cm}
+{\large Course Project Report\par}
 \vspace{1.3cm}
 {\color{navy}\rule{\textwidth}{1.4pt}\par}
 \vspace{0.7cm}
@@ -52,44 +54,65 @@
 \vspace{1.5cm}
 {\Large Pratyush Singh\par}
 \vspace{0.2cm}
-{\large Roll number: \rule{4cm}{0.4pt}\par}
+{\large Roll number: 230784\par}
 \vfill
 \begin{minipage}{0.82\textwidth}
 \small
-\textbf{Project scope.} This report studies the retrieval stage of a multimodal retrieval-augmented generation (RAG) system. It evaluates released ColSmolVLM checkpoints; it does not claim to train the models or evaluate an answer generator.
+\textbf{Project scope.} This course project studies the retrieval stage of a multimodal retrieval-augmented generation (RAG) system. It evaluates released ColSmolVLM checkpoints; it does not claim to train the models or evaluate an answer generator.
 \end{minipage}
 \vfill
 {\large September 2026\par}
 \end{titlepage}
 
 \begin{abstract}
-A retrieval-augmented generation system can answer from a document only after its retriever finds the right evidence. That first step becomes fragile when a PDF communicates through layout, tables, plots, logos, and spatial position rather than plain text alone. This project therefore asks a focused pattern-recognition question: \emph{how should a lightweight system represent and compare visually rich document pages?} We reproduce a page-level retrieval pipeline on four ViDoRe tasks and compare OCR-based BM25, dense BGE text retrieval, a single global visual vector, and ColSmolVLM multi-vector late interaction. We also compare 256M and 500M checkpoints and test four token-compression strategies at five retention levels. Across DocVQA, InfoVQA, ArxivQA, and TatDQA, 500M MaxSim obtains nDCG@5 of 57.8, 86.9, 74.7, and 76.5, respectively, outperforming every tested baseline on every dataset. Replacing MaxSim with global pooling loses 38.6--54.1 nDCG points, showing that the representation and matching rule matter more than the modest increase from 256M to 500M. K-means retains at least 95\% of uncompressed quality with only 12.5--25\% of page tokens, reducing index memory by 4--8$\times$. The result is a compact, reproducible retrieval study---the scientific core needed before adding a generator to a visual RAG application.
+A retrieval-augmented generation system can answer from a document only after it finds the page containing the evidence. This is difficult for visually rich PDFs because meaning may be carried by a table layout, a plot, a logo, or the position of a small label---not only by plain text. This course project studies that retrieval problem step by step. It compares two OCR-based text methods, a visual method that reduces a whole page to one vector, and a visual method that keeps many local page vectors and matches them using MaxSim. The experiments use the complete DocVQA, InfoVQA, ArxivQA, and TatDQA retrieval test sets. The 500M MaxSim model obtains nDCG@5 scores of 57.8, 86.9, 74.7, and 76.5, respectively, and is the best tested method on every dataset. The project also studies efficiency: k-means compression keeps at least 95\% of the original retrieval quality while storing only 12.5--25\% of the page tokens. The report explains the underlying mathematics with small examples, connects each equation to the implementation, and discusses where the system succeeds, where it fails, and what would still be needed to turn the retriever into a complete multimodal RAG application.
 \end{abstract}
 
-\section{The story begins before generation}
+\section{Why this project is needed}
 
-Suppose a user asks, ``What does the colour gradient in this scientific figure represent?'' A language model may be fluent, but the answer is not necessarily stored in its parameters, and those parameters do not provide a trustworthy link to the user's page. RAG addresses this by treating an external collection as memory \cite{lewis2020rag}. In its simplest form,
+Consider a student who uploads hundreds of lecture slides, research papers, and scanned forms, then asks: ``What does the colour gradient in this scientific figure represent?'' A language model may produce fluent text, but it has two problems. First, the required fact may not be stored in its parameters. Second, even if the model gives a plausible answer, it may not be grounded in the student's document.
+
+RAG addresses this by treating the document collection as an external memory \cite{lewis2020rag}. A complete RAG system performs two main operations:
+\begin{center}
+\fbox{question $\longrightarrow$ retrieve evidence $\longrightarrow$ generate an answer from that evidence.}
+\end{center}
+The complete relationship can be written as
 \begin{equation}
 \hat{a}=G\!\left(q,\;\operatorname{TopK}_{D\in\mathcal{C}} S(q,D)\right),
 \label{eq:rag}
 \end{equation}
-where $q$ is the question, $\mathcal{C}$ is the document collection, $S$ is a retrieval score, $G$ is a generator, and $\hat{a}$ is the answer. Equation~\ref{eq:rag} exposes the dependency that motivates this project: if the relevant page is absent from the top-$K$, the generator never sees the evidence. Better wording cannot repair missing evidence.
+where:
+\begin{itemize}
+  \item $q$ is the user's question;
+  \item $\mathcal{C}$ is the collection of document pages;
+  \item $S(q,D)$ measures how relevant page $D$ is to question $q$;
+  \item $\operatorname{TopK}$ keeps the $K$ highest-scoring pages;
+  \item $G$ is a generator, and $\hat a$ is its final answer.
+\end{itemize}
+
+The important point is not the notation. It is the order of events: \emph{retrieval happens before generation}. If the correct page is not among the retrieved pages, the generator does not receive the evidence. This project therefore concentrates on the retrieval score $S(q,D)$.
+
+\subsection{Why ordinary text retrieval can fail on PDFs}
 
 The usual document pipeline is
 \begin{center}
 PDF $\rightarrow$ OCR $\rightarrow$ text chunks $\rightarrow$ embeddings $\rightarrow$ nearest neighbours.
 \end{center}
-It is practical, but OCR turns a two-dimensional visual object into a one-dimensional string. A table's row--column relationship, a plot legend, small corner text, and typographic hierarchy may be lost or scrambled. Errors then propagate: OCR failure changes the text; chunking changes the context; a text encoder cannot recover visual information that no longer exists.
+It is practical, but OCR turns a two-dimensional page into a one-dimensional string. A table's row--column relationship, a plot legend, small corner text, and typographic hierarchy may be lost or reordered. The problem is cumulative:
+\begin{center}
+OCR error $\rightarrow$ incomplete text $\rightarrow$ weaker embedding $\rightarrow$ wrong page retrieved.
+\end{center}
+A text encoder cannot recover visual information that was removed before the encoder saw the page.
 
 This project studies the alternative:
 \begin{center}
 page image $\rightarrow$ visual token embeddings $\rightarrow$ late interaction $\rightarrow$ relevant pages.
 \end{center}
-The generator is intentionally outside the experimental boundary. The goal is not to build another chatbot interface, but to understand the representation that would supply a future generator with evidence.
+The page image remains intact. The model can therefore use words, layout, graphics, and spatial relationships together. The generator is intentionally outside the experimental boundary: the goal of the course project is to understand the representation and matching stages that would supply a future generator with evidence.
 
-\subsection{Research questions}
+\subsection{What the project tries to learn}
 
-The experiments answer four concrete questions.
+The work is organised around four simple questions.
 \begin{enumerate}
   \item Does direct visual retrieval beat OCR-based lexical and dense-text baselines?
   \item Is a set of local page vectors better than one globally pooled vector?
@@ -97,9 +120,11 @@ The experiments answer four concrete questions.
   \item How many page tokens can be removed before retrieval quality collapses?
 \end{enumerate}
 
-\section{Background and related work}
+\section{Background: how the main ideas connect}
 
-\paragraph{RAG.} Lewis et al. combine a parametric sequence model with non-parametric retrieved memory, making knowledge easier to update and evidence easier to trace than in a purely parametric model \cite{lewis2020rag}. Our work isolates the retrieval term $S(q,D)$ in Equation~\ref{eq:rag}; answer quality is not measured.
+This section places the project in context. Each earlier method solves one part of the problem; the tested ColSmolVLM pipeline combines their useful ideas.
+
+\paragraph{RAG.} Lewis et al. combine a parametric sequence model with retrieved external memory \cite{lewis2020rag}. External documents are easier to update and inspect than facts hidden in model parameters. This project isolates the retrieval term $S(q,D)$ in Equation~\ref{eq:rag}; answer generation is not measured.
 
 \paragraph{Text retrieval.} BM25 is a strong sparse baseline that rewards exact term overlap while normalising for document length \cite{robertson2009bm25}. Dense bi-encoders instead map a query and a document to semantic vectors and compare them by cosine similarity. We use BGE-small-en-v1.5 as a compact dense baseline \cite{xiao2023cpack}.
 
@@ -107,51 +132,99 @@ The experiments answer four concrete questions.
 
 \paragraph{Visual document retrieval.} ColPali transfers late interaction to rendered document pages: a vision-language model emits multiple page vectors directly from the image, avoiding an OCR-first representation bottleneck \cite{faysse2024colpali}. The same work introduces ViDoRe, a benchmark spanning visually rich page-retrieval tasks. ColSmolVLM applies the idea to compact SmolVLM backbones; the released checkpoints are designed for multi-vector retrieval \cite{colsmolmodel,smolvlm2025}.
 
-\section{Theory: from a page to a relevance score}
+\section{Understanding the retrieval mathematics}
 
-\subsection{The retrieval problem}
+This section builds the mathematics gradually. Every retrieval method performs the same final task---assign a score to each page---but it represents the page differently.
 
-For query $q_i$ and corpus $\mathcal{C}=\{D_1,\ldots,D_N\}$, the retriever returns a permutation $\pi_i$ such that
+\subsection{Step 1: ranking the pages}
+
+Suppose the collection contains $N$ pages,
 \begin{equation}
-S(q_i,D_{\pi_i(1)})\ge S(q_i,D_{\pi_i(2)})\ge\cdots\ge S(q_i,D_{\pi_i(N)}).
+\mathcal C=\{D_1,D_2,\ldots,D_N\}.
 \end{equation}
-The pattern-recognition problem is therefore a combination of (i) choosing a representation $\phi(\cdot)$ and (ii) choosing a comparison rule $S(\cdot,\cdot)$. The experiments hold the evaluation collection fixed while changing these two choices.
-
-\subsection{Text baselines}
-
-For BM25, a query term $t$ contributes
+For one question $q$, the system calculates one score per page:
 \begin{equation}
-\operatorname{BM25}(q,D)=\sum_{t\in q}\operatorname{IDF}(t)
-\frac{f(t,D)(k_1+1)}{f(t,D)+k_1\left(1-b+b\frac{|D|}{\overline{|D|}}\right)},
+s_j=S(q,D_j), \qquad j=1,2,\ldots,N.
 \end{equation}
-where $f(t,D)$ is term frequency, $|D|$ is document length, $\overline{|D|}$ is average length, and this implementation uses $k_1=1.5$, $b=0.75$. BM25 is interpretable and excellent for exact names or numbers, but it relies on OCR and weakly models paraphrase.
+The pages are then sorted from the largest score to the smallest. If $\pi(1)$ is the index of the highest-scoring page, the returned order satisfies
+\begin{equation}
+S(q,D_{\pi(1)})\ge S(q,D_{\pi(2)})\ge\cdots\ge S(q,D_{\pi(N)}).
+\end{equation}
+For example, scores $[0.20,0.85,0.40]$ produce the page order $[D_2,D_3,D_1]$. Retrieval succeeds if a relevant page appears near the beginning. The pattern-recognition decision therefore depends on two choices:
+\begin{enumerate}
+  \item how the question and page are represented; and
+  \item how those representations are compared to produce $S(q,D)$.
+\end{enumerate}
 
-The BGE bi-encoder produces one normalised vector for each OCR document and query:
+\subsection{Step 2: text-based comparison}
+
+\subsubsection*{BM25: matching important words}
+
+BM25 begins with exact terms. A term is useful when it occurs in the page but is uncommon across the whole collection. Its inverse-document-frequency weight is
+\begin{equation}
+\operatorname{IDF}(t)=\log\left(\frac{N-n_t+0.5}{n_t+0.5}+1\right),
+\end{equation}
+where $N$ is the number of pages and $n_t$ is the number containing term $t$. A rare term such as a product code receives more weight than a common term such as ``the''.
+
+BM25 then combines these term weights:
+\begin{equation}
+\operatorname{BM25}(q,D)=\sum_{t\in q}\operatorname{IDF}(t)\times
+\underbrace{\frac{f(t,D)(k_1+1)}{f(t,D)+k_1\left(1-b+b\frac{|D|}{\overline{|D|}}\right)}}_{\text{term-frequency and length adjustment}}.
+\label{eq:bm25}
+\end{equation}
+Here $f(t,D)$ counts the term in the OCR text, $|D|$ is that text's length, and $\overline{|D|}$ is average length. We use $k_1=1.5$ and $b=0.75$. The fraction increases when the term repeats, but it saturates instead of growing without limit. It also prevents long pages from winning merely because they contain more words. BM25 is excellent for exact names and numbers, but it cannot match information that OCR did not recognise.
+
+\subsubsection*{Dense text retrieval: matching meaning}
+
+The BGE baseline converts the question and the OCR text into vectors $\bm e_q$ and $\bm e_D$. Their cosine similarity is
 \begin{equation}
 S_{\mathrm{text}}(q,D)=\frac{\bm e_q^\top \bm e_D}{\|\bm e_q\|_2\|\bm e_D\|_2}.
+\label{eq:cosine}
 \end{equation}
-It can match semantic paraphrases but still only sees the extracted text.
+The numerator is a dot product. The denominator removes vector length, leaving only direction. A score near $1$ means the vectors point in similar directions; near $0$ means they are unrelated. Unlike BM25, this can connect paraphrases such as ``yearly income'' and ``annual revenue''. It still only sees the extracted OCR text.
 
-\subsection{Global visual pooling}
+\subsection{Step 3: representing the page as an image}
 
-Let the visual encoder produce $n$ page-token vectors $D=[\bm d_1,\ldots,\bm d_n]\in\R^{n\times d}$. A simple baseline averages the tokens,
+\subsubsection*{A single global visual vector}
+
+The visual encoder divides a page into many learned regions or tokens. It returns
 \begin{equation}
-\bar{\bm d}=\frac{1}{n}\sum_{j=1}^{n}\bm d_j,
-\qquad
+D=[\bm d_1,\bm d_2,\ldots,\bm d_n], \qquad \bm d_j\in\R^d,
+\end{equation}
+where $n$ is the number of page tokens and $d=128$ is the embedding size in this project. The simplest way to obtain one page vector is to average them:
+\begin{equation}
+\bar{\bm d}=\frac{1}{n}\sum_{j=1}^{n}\bm d_j.
+\end{equation}
+The question tokens are averaged in the same way, producing $\bar{\bm q}$. The global score is then
+\begin{equation}
 S_{\mathrm{global}}(q,D)=\bar{\bm q}^{\top}\bar{\bm d}.
 \end{equation}
-This is memory-efficient, but averaging can cancel rare local signals. A small label in a chart competes with every background and body-text patch for space in the same vector.
+This is compact: every page becomes only one vector. However, a small chart label is averaged together with headings, body text, white space, and every other page region. A rare but decisive local signal can disappear inside the mean.
 
-\subsection{Multi-vector late interaction}
+\subsubsection*{Keeping local vectors: MaxSim late interaction}
 
-ColSmolVLM returns $m$ query vectors $Q=[\bm q_1,\ldots,\bm q_m]$ and $n$ document vectors $D=[\bm d_1,\ldots,\bm d_n]$, each in $\R^d$. After $L_2$ normalisation, their dot product is cosine similarity. MaxSim scores the best matching page token for each query token and then sums:
+ColSmolVLM avoids early averaging. It keeps $m$ question vectors
+\begin{equation}
+Q=[\bm q_1,\bm q_2,\ldots,\bm q_m]
+\end{equation}
+and $n$ page vectors
+\begin{equation}
+D=[\bm d_1,\bm d_2,\ldots,\bm d_n].
+\end{equation}
+All vectors are $L_2$-normalised, so $\bm q_i^\top\bm d_j$ is their cosine similarity. Scoring now happens in three understandable operations:
+\begin{enumerate}
+  \item compare every question token $i$ with every page token $j$;
+  \item for each question token, keep only its best page match;
+  \item add those best-match values.
+\end{enumerate}
+This is the MaxSim equation:
 \begin{equation}
 \boxed{S_{\mathrm{MaxSim}}(Q,D)=\sum_{i=1}^{m}\max_{1\le j\le n}\bm q_i^\top\bm d_j.}
 \label{eq:maxsim}
 \end{equation}
-The maximum gives each query concept its own location on the page. The sum requires a document to explain the query as a whole.
+The inner maximum lets each query concept choose a different location on the page. The outer sum requires the page to match many parts of the question, not just one lucky word.
 
-\paragraph{Worked example.} Imagine three query tokens---``net'', ``income'', and ``2019''---and four page regions. Their similarity matrix is
+\paragraph{Worked example.} Imagine three important query tokens---``net'', ``income'', and ``2019''---and four page regions. Computing all $3\times4$ dot products gives
 \begin{equation}
 QD^\top=
 \begin{bmatrix}
@@ -160,41 +233,85 @@ QD^\top=
 0.07&0.19&0.91&0.15
 \end{bmatrix}.
 \end{equation}
-Taking the row maxima yields $[0.92,0.88,0.91]$, so $S=2.71$. The three concepts may occur in different cells of a table; MaxSim preserves that fact. A single average vector can blur the same three local matches.
+Read one row at a time:
+\begin{align}
+\text{best match for ``net''}    &=\max(0.92,0.10,0.08,0.21)=0.92,\\
+\text{best match for ``income''} &=\max(0.12,0.88,0.14,0.18)=0.88,\\
+\text{best match for ``2019''}   &=\max(0.07,0.19,0.91,0.15)=0.91.
+\end{align}
+Therefore,
+\begin{equation}
+S_{\mathrm{MaxSim}}=0.92+0.88+0.91=2.71.
+\end{equation}
+The three strongest matches occur in three different page regions, which is exactly what a financial table may require. Early global averaging can blur these separate cells; MaxSim keeps them available until the question arrives.
 
-The exact scoring cost per query--page pair is $O(mnd)$, and a half-precision page index requires approximately
+\subsubsection*{What MaxSim costs}
+
+Every one of the $m$ question vectors is compared with $n$ page vectors, and each dot product uses $d$ numbers. The work per question--page pair therefore grows as
+\begin{equation}
+\text{operations}\propto m\times n\times d.
+\end{equation}
+The page vectors are stored before questions arrive. With $N$ pages and FP16 values (2 bytes per number), approximate index memory is
 \begin{equation}
 M_{\mathrm{index}}=N\,n\,d\times 2\ \text{bytes}.
 \label{eq:memory}
 \end{equation}
-This explains the central trade-off: multi-vector matching improves recognition, but token count controls storage and arithmetic.
+For a simple example, 500 pages with 1,000 tokens/page and $d=128$ require
+\begin{equation}
+500\times1000\times128\times2=128{,}000{,}000\ \text{bytes}\approx122\ \text{MiB}.
+\end{equation}
+This is why token compression is useful: reducing $n$ reduces both stored values and comparisons.
 
-\subsection{Token compression}
+\subsection{Step 4: reducing the number of page tokens}
 
-For retention ratio $r\in\{1,.75,.50,.25,.125\}$, the target token count is $k=\max(1,\lceil rn\rceil)$. We compare:
+Let $r$ be the fraction of tokens to retain. A page with $n$ tokens is reduced to
+\begin{equation}
+k=\max(1,\lceil r n\rceil).
+\end{equation}
+For example, $n=1{,}000$ and $r=0.25$ gives $k=250$. We test $r\in\{1,.75,.50,.25,.125\}$ with four strategies:
 \begin{itemize}
   \item \textbf{random:} sample $k$ tokens without replacement (three seeds);
   \item \textbf{uniform:} retain approximately evenly spaced token positions;
   \item \textbf{mean-pool:} divide the sequence into $k$ contiguous groups and average each group;
   \item \textbf{k-means:} replace the tokens with $k$ learned centroids.
 \end{itemize}
-The first two select tokens, while the latter two construct representatives. K-means approximately minimises
+The first two choose existing tokens. Mean-pooling and k-means instead construct representative tokens. K-means chooses centroids $\bm c_1,\ldots,\bm c_k$ that approximately minimise
 \begin{equation}
 \min_{\{\bm c_\ell\}_{\ell=1}^{k}}\sum_{j=1}^{n}\min_{\ell}\|\bm d_j-\bm c_\ell\|_2^2,
 \end{equation}
-so it preserves the geometry of repeated visual patterns rather than merely preserving positions.
+which means: assign each original page token to its nearest centroid, then make the total squared distance as small as possible. In plain language, the centroids summarise groups of similar page regions.
 
-\subsection{Evaluation measures}
+\subsection{Step 5: measuring whether the ranking is good}
 
-The primary metric is nDCG@5. For ranked gains $g_i$,
+\subsubsection*{Recall@$K$ and reciprocal rank}
+
+Recall@$K$ asks a yes/no question for each query: did at least one relevant page appear in the first $K$ results? The reported value is the fraction of queries for which the answer is yes. Reciprocal rank also cares about the first relevant position $r_q$:
 \begin{equation}
-\mathrm{DCG}@K=\sum_{i=1}^{K}\frac{2^{g_i}-1}{\log_2(i+1)},
+\operatorname{RR}(q)=\frac{1}{r_q},
 \qquad
-\mathrm{nDCG}@K=\frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K}.
+\operatorname{MRR}=\frac{1}{|Q|}\sum_{q\in Q}\operatorname{RR}(q).
 \end{equation}
-It rewards putting a relevant page near the top and normalises across queries. We also report mean reciprocal rank, $\mathrm{MRR}=|Q|^{-1}\sum_q 1/r_q$, where $r_q$ is the first relevant rank, and Recall@$K$, the fraction of queries with relevant evidence in the first $K$ results.
+A relevant page at rank 1 gives $1$, rank 2 gives $0.5$, and rank 10 gives $0.1$.
 
-\section{Methodology and implementation}
+\subsubsection*{nDCG@$K$: rewarding early relevant pages}
+
+The main metric is nDCG@5. First, discounted cumulative gain assigns less credit to relevant pages found later:
+\begin{equation}
+\mathrm{DCG}@K=\sum_{i=1}^{K}\frac{2^{g_i}-1}{\log_2(i+1)}.
+\label{eq:dcg}
+\end{equation}
+Here $g_i$ is the relevance gain at rank $i$. The logarithm is a discount: the denominator grows as rank becomes worse. IDCG@$K$ is the best possible DCG for the same relevance labels. Normalisation gives
+\begin{equation}
+\mathrm{nDCG}@K=\frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K},
+\qquad 0\le\mathrm{nDCG}@K\le1.
+\end{equation}
+For a single binary-relevant page, retrieving it at rank 1 gives nDCG$=1$. Retrieving it at rank 3 gives
+\begin{equation}
+\mathrm{nDCG}@3=\frac{1/\log_2(4)}{1/\log_2(2)}=\frac{1}{2}=0.5.
+\end{equation}
+Thus nDCG captures the behaviour desired in RAG: evidence should not merely be present somewhere; it should appear near the top of the context supplied to the generator.
+
+\section{How the project was carried out}
 
 \subsection{Datasets}
 
@@ -218,7 +335,7 @@ TatDQA & 1,646 & 277 & 277 (100\%) & financial tables and reports \\
 
 The OCR pages are joined to the MTEB corpus by exact image digest (or filename when available). The code distinguishes a mapped-but-empty OCR row from a missing mapping. This matters most for ArxivQA: its text scores are valid for the supplied OCR artifact, but 78 pages contain no OCR text, so visual--text comparisons there should be interpreted cautiously.
 
-\subsection{Compared systems}
+\subsection{Systems compared in the project}
 
 \begin{table}[H]
 \centering
@@ -237,7 +354,22 @@ ColSmol MaxSim & many 128-D page vectors & Eq.~\ref{eq:maxsim} & proposed retrie
 
 The visual experiments compare \code{vidore/colSmol-256M} and \code{vidore/colSmol-500M}. The 500M checkpoint contains 477,663,552 parameters in the loaded implementation. All neural inference is frozen; no labels from the evaluation sets are used for training.
 
-\subsection{Reproducible execution}
+\subsection{End-to-end retrieval procedure}
+
+The same evaluation procedure is used for every visual model and dataset:
+\begin{enumerate}
+  \item load the page images, questions, and page-level relevance labels;
+  \item encode every page once and save its visual token matrix $D$;
+  \item encode one incoming question to obtain its token matrix $Q$;
+  \item compute either the global score or the MaxSim score for every page;
+  \item sort all pages by decreasing score and record the relevant page's rank;
+  \item repeat for every question, then calculate nDCG@5, MRR, and Recall@$K$;
+  \item for the compression experiment, compress each stored $D$ before Step 4 and repeat the evaluation;
+  \item save aggregate metrics, per-question ranks, timings, memory use, and provenance to JSON.
+\end{enumerate}
+Each query is compared against the complete corpus for its dataset. Therefore, a score improvement cannot come from evaluating an easier subset of pages.
+
+\subsection{Implementation and reproducible execution}
 
 Experiments ran with seed 42 in Python 3.12.12, PyTorch 2.11.0+cu130, Transformers 5.17.0, and ColPali Engine 0.3.18 on one NVIDIA RTX A6000 (physical GPU 2, 47.4~GiB). FP16 is used for visual embeddings. Dataset fingerprints, checkpoint revisions, timings, per-query ranks, and environment information are stored with the results. Twenty automated unit tests passed in the final server run.
 
@@ -253,9 +385,9 @@ score = similarities.max(dim=-1).values.sum(dim=-1)
 
 The full experiment driver evaluates both checkpoints, all four datasets, two text baselines, 100 compression configurations, and then regenerates summary tables, plots, and failure cases. Existing valid caches are reused to make interrupted runs resumable.
 
-\section{Quantitative results}
+\section{What the experiments showed}
 
-\subsection{Main comparison}
+\subsection{Main comparison: which method retrieves best?}
 
 \begin{table}[H]
 \centering
@@ -291,7 +423,7 @@ Three observations tell the main story.
 
 For the 500M MaxSim system, Recall@1 / Recall@5 / Recall@10 is 50.0/64.3/71.5 on DocVQA, 82.4/90.5/92.7 on InfoVQA, 67.0/81.2/85.8 on ArxivQA, and 64.1/87.4/93.7 on TatDQA. Thus, most remaining errors are not only ordering errors: on DocVQA, 28.5\% of queries still have no relevant page in the top ten.
 
-\subsection{Compression ablation}
+\subsection{Compression experiment: how many tokens are necessary?}
 
 \begin{table}[H]
 \centering
@@ -351,7 +483,7 @@ TatDQA & 706.2 & 16.5 & 9.1 & 72.38 \\
 
 Page encoding is the expensive offline operation; query encoding and scoring are online. The index remains small here because the benchmark corpora contain only 277--500 pages. For a million pages with 1,000 tokens/page, $d=128$, and FP16 storage, Equation~\ref{eq:memory} gives approximately 238~GiB, which motivates compression or specialised multi-vector indexing for deployment.
 
-\section{Qualitative analysis: where the numbers come from}
+\section{Looking at individual successes and failures}
 
 Table~\ref{tab:cases} traces individual questions through the rankings. These are not generated explanations of page content; they are direct case studies from the stored per-query ranks.
 
@@ -378,7 +510,7 @@ The first three cases show the advantage of local visual evidence. A term inside
 
 The failures are equally informative. A tiny monogram in a named corner requires both fine visual resolution and explicit spatial grounding; neither representation reliably solves it. The generic question ``What does the figure primarily illustrate?'' contains few discriminative words, so many scientific pages can look semantically plausible. BGE ranks the relevant page fourth, demonstrating that visual and text channels make complementary errors rather than forming a strict hierarchy.
 
-\section{Discussion, limitations, and threats to validity}
+\section{What we learned and what remains limited}
 
 \paragraph{What was learned.} The strongest conclusion is architectural: preserving a set of local descriptors and delaying interaction until the query arrives is dramatically more effective than compressing a page to one vector. The 500M model is the best tested system, but the 256M MaxSim model already beats every text and global baseline. K-means then recovers much of the storage cost without erasing the advantage.
 
